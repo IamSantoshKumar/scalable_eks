@@ -1,4 +1,4 @@
-name: AWS Nuke (Sandbox)
+name: AWS Nuke (Full Account Wipe)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
     steps:
-    - name: Install aws-nuke (ekristen fork v3.56.2)
+    - name: Install aws-nuke (v3.56.2)
       run: |
         wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
         tar -xzf aws-nuke.tar.gz
@@ -24,49 +24,22 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
 
-    - name: Generate aws-nuke config for VPC only
+    - name: Generate aws-nuke config for full deletion
       run: |
         cat > nuke-config.yaml <<EOF
         regions:
+          - global
           - eu-north-1
 
         blocklist:
-          - "000000000000"
+          - "000000000000"  # Do not touch this
 
         accounts:
           "${AWS_ACCOUNT_ID}":
             account-alias: "sandbox-nuke"
-            include:
-              - VPC
-              - Subnet
-              - InternetGateway
-              - NatGateway
-              - RouteTable
-              - NetworkAcl
-              - SecurityGroup
-              - VpcPeeringConnection
-              - VpnGateway
-              - CustomerGateway
-            filters:
-              VPC:
-                # Optional: Only delete VPCs tagged for auto-delete
-                - property: "tag:autodelete"
-                  value: "true"
         EOF
 
-    - name: 🧪 Dry Run (Preview Plan)
+    - name: Run AWS Nuke (⚠️ Destroys ALL Resources)
       run: |
-        echo "=== Dry-run output ==="
-        aws-nuke run -c nuke-config.yaml --no-dry-run=false | tee dry-run.txt
-
-    - name: Upload dry-run log for review
-      uses: actions/upload-artifact@v4
-      with:
-        name: dry-run-log
-        path: dry-run.txt
-
-    - name: ⚠️ Manual Step - Uncomment below to enable destruction
-      if: false  # Prevents this from running unless changed manually
-      run: |
-        echo "=== Starting actual destruction ==="
+        echo "=== Nuking all resources in account: ${AWS_ACCOUNT_ID} ==="
         aws-nuke run -c nuke-config.yaml --no-dry-run --force
