@@ -15,6 +15,10 @@ resource "aws_iam_role" "eks_cluster_role" {
     Terraform   = "true"
     Environment = "dev"
   }
+    lifecycle {
+    create_before_destroy = true
+    prevent_destroy       = false
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attachment" {
