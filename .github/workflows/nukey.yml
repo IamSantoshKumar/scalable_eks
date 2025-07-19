@@ -38,7 +38,7 @@ jobs:
         echo "=== Dry-run output ==="
         aws-nuke run -c nuke-config.yaml --no-dry-run=false | tee dry-run.txt
     - name: Upload dry-run log for review
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dry-run-log
         path: dry-run.txt
