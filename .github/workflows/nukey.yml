@@ -10,9 +10,10 @@ jobs:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
     steps:
-    - name: Install aws-nuke (ekristen fork)
+    - name: Install aws-nuke (ekristen fork v3.56.2)
       run: |
-        wget https://github.com/ekristen/aws-nuke/releases/latest/download/aws-nuke-linux-amd64 -O aws-nuke
+        wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
+        tar -xzf aws-nuke.tar.gz
         chmod +x aws-nuke
         sudo mv aws-nuke /usr/local/bin/
     - name: Configure AWS Credentials
@@ -43,4 +44,4 @@ jobs:
         name: dry-run-log
         path: dry-run.txt
     - name: 🚫 Stop before deletion
-      run: echo "Review the dry-run log artifact. Re-run with deletion enabled."
+      run: echo "Review artifact. Re-run manually with deletion enabled."
