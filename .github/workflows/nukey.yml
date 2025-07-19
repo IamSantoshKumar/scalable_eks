@@ -1,11 +1,16 @@
-name: AWS Nuke (VPC Cleanup)
+name: AWS Nuke (Auto VPC Cleanup)
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_deletion:
+        description: "Type YES to confirm VPC deletion"
+        required: true
 
 jobs:
-  aws-nuke:
+  nuke-vpc:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm_deletion == 'YES' }}
     env:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
@@ -24,7 +29,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
 
-    - name: Generate nuke config (VPC Resources Only)
+    - name: Generate aws-nuke config for VPC only
       run: |
         cat > nuke-config.yaml <<EOF
         regions:
@@ -48,16 +53,6 @@ jobs:
               - CustomerGateway
         EOF
 
-    - name: Dry Run (Preview Plan)
+    - name: Run aws-nuke (Real Deletion)
       run: |
-        echo "=== Dry-run output ==="
-        aws-nuke run -c nuke-config.yaml --no-dry-run=false | tee dry-run.txt
-
-    - name: Upload dry-run log for review
-      uses: actions/upload-artifact@v4
-      with:
-        name: dry-run-log
-        path: dry-run.txt
-
-    - name: 🚫 Stop before deletion
-      run: echo "Review dry-run. Re-run manually with deletion enabled by changing --no-dry-run to actual deletion."
+        aws-nuke run -c nuke-config.yaml --no-dry-run --force
