@@ -11,9 +11,9 @@ jobs:
     steps:
     - name: Install aws-nuke
       run: |
-        wget https://github.com/rebuy-de/aws-nuke/releases/latest/download/aws-nuke-linux-amd64 -O aws-nuke
-        chmod +x aws-nuke
-        sudo mv aws-nuke /usr/local/bin/
+         wget https://github.com/rebuy-de/aws-nuke/releases/download/v2.24.0/aws-nuke-linux-amd64 -O aws-nuke
+         chmod +x aws-nuke
+         sudo mv aws-nuke /usr/local/bin/
 
     - name: Create Config File
       run: |
