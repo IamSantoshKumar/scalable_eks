@@ -1,70 +1,61 @@
-name: AWS Nuke Resources
+name: AWS Nuke
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Manually trigger from GitHub UI
 
 jobs:
   nuke:
     runs-on: ubuntu-latest
-
-    env:
-      AWS_REGION: eu-north-1
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    environment: production
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Debug AWS Identity
-        run: |
-          echo "🔐 Verifying identity..."
-          aws sts get-caller-identity
-          aws configure list
-          env | grep AWS
 
       - name: Install aws-nuke
         run: |
           wget https://github.com/rebuy-de/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz
-          tar -xvf aws-nuke-v3.56.2-linux-amd64.tar.gz
-          sudo mv aws-nuke-v3.56.2-linux-amd64 /usr/local/bin/aws-nuke
+          tar -xzf aws-nuke-v3.56.2-linux-amd64.tar.gz
+          sudo mv aws-nuke-v3.56.2-linux-amd64/aws-nuke /usr/local/bin/aws-nuke
 
-      - name: Ensure Account Alias Exists
+      - name: Manually configure AWS credentials
         run: |
-          echo "🔧 Checking for account alias..."
-          ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text)
-          if [ "$ALIAS" = "None" ] || [ -z "$ALIAS" ]; then
-            echo "⚠️ No alias found. Creating 'sandbox-nuke'"
-            aws iam create-account-alias --account-alias "sandbox-nuke" || true
+          mkdir -p ~/.aws
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+          echo "[default]" > ~/.aws/config
+          echo "region=eu-north-1" >> ~/.aws/config
+
+      - name: Ensure AWS account alias exists
+        run: |
+          ALIAS_NAME="sandbox-nuke-${{ github.run_id }}"
+          CURRENT_ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text || true)
+
+          if [ "$CURRENT_ALIAS" = "None" ] || [ -z "$CURRENT_ALIAS" ]; then
+            echo "No alias found. Creating alias: $ALIAS_NAME"
+            aws iam create-account-alias --account-alias "$ALIAS_NAME" || true
           else
-            echo "✅ Alias exists: $ALIAS"
+            echo "Alias already exists: $CURRENT_ALIAS"
           fi
 
-      - name: Create aws-nuke config
+      - name: Create nuke config file
         run: |
           cat <<EOF > nuke-config.yaml
           regions:
-            - $AWS_REGION
-
+            - eu-north-1
           account-blocklist: []
-
+          resource-types:
+            targets:
+              - '*'
           accounts:
-            $AWS_ACCOUNT_ID:
+            ${{ secrets.AWS_ACCOUNT_ID }}:
               filters:
                 IAMUser:
-                  - "github-actions"
-
+                  - "github-actions"  # prevent nuking runner identity
           EOF
 
-      - name: Run AWS Nuke
+      - name: Run aws-nuke
         run: |
-          echo "💣 Nuking resources in account $AWS_ACCOUNT_ID"
+          echo "Running aws-nuke in account: ${{ secrets.AWS_ACCOUNT_ID }}"
           aws-nuke -c nuke-config.yaml --no-dry-run --force
