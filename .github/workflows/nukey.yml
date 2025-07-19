@@ -1,4 +1,4 @@
-name: AWS Nuke (Sandbox)
+name: AWS Nuke (VPC Cleanup)
 
 on:
   workflow_dispatch:
@@ -15,32 +15,49 @@ jobs:
         wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
         tar -xzf aws-nuke.tar.gz
         chmod +x aws-nuke
-        sudo mv aws-nuke /usr/local/bin/
+        sudo mv aws-nuke /usr/local/bin/aws-nuke
+
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
-    - name: Generate nuke config
+
+    - name: Generate nuke config (VPC Resources Only)
       run: |
         cat > nuke-config.yaml <<EOF
         regions:
-          - global
           - eu-north-1
+
         account-blocklist:
           - "000000000000"
+
         accounts:
-          "${AWS_ACCOUNT_ID}": {}
+          "${AWS_ACCOUNT_ID}":
+            include:
+              - VPC
+              - Subnet
+              - InternetGateway
+              - NatGateway
+              - RouteTable
+              - NetworkAcl
+              - SecurityGroup
+              - VpcPeeringConnection
+              - VpnGateway
+              - CustomerGateway
         EOF
+
     - name: Dry Run (Preview Plan)
       run: |
         echo "=== Dry-run output ==="
         aws-nuke run -c nuke-config.yaml --no-dry-run=false | tee dry-run.txt
+
     - name: Upload dry-run log for review
       uses: actions/upload-artifact@v4
       with:
         name: dry-run-log
         path: dry-run.txt
+
     - name: 🚫 Stop before deletion
-      run: echo "Review artifact. Re-run manually with deletion enabled."
+      run: echo "Review dry-run. Re-run manually with deletion enabled by changing --no-dry-run to actual deletion."
