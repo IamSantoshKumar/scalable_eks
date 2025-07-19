@@ -35,9 +35,7 @@ jobs:
           terraform import aws_ecr_repository.main flask-webapp-ecr || true
           terraform import aws_iam_role.eks_cluster_role flask-eks-cluster-role || true
           terraform import aws_iam_role.eks_node_group_role flask-eks-nodegroup-role || true
-          terraform import aws_kms_alias.this arn:aws:kms:${{ env.AWS_REGION }}:<AWS_ACCOUNT_ID>:alias/eks/my-eks-cluster || true
-          terraform import aws_cloudwatch_log_group.eks_cluster_logs /aws/eks/my-eks-cluster/cluster || true
-          terraform import module.eks.module.kms.aws_kms_alias.this["cluster"] arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:alias/eks/my-eks-cluster || true
+          terraform import module.eks.module.kms.aws_kms_alias.this["cluster"] arn:aws:kms:${AWS_REGION}:${AWS_ACCOUNT_ID}:alias/eks/my-eks-cluster
           terraform import module.eks.aws_cloudwatch_log_group.this[0] /aws/eks/my-eks-cluster/cluster || true
 
       - name: Terraform Plan
