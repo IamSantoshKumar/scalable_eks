@@ -3,13 +3,16 @@ name: Flask App CI/CD on EKS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,41 +24,40 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
       - name: Terraform Init
-        run: terraform init 
+        run: terraform init -input=false
 
       - name: Terraform Apply (create infra)
-        id: tf_apply
-        run: terraform apply -auto-approve 
+        run: terraform apply -auto-approve
 
       - name: Capture ECR URL
-        run: echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
+        run: |
+          echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
 
       - name: Login to Amazon ECR
-        id: ecr_login
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and Push Docker image
         env:
           IMAGE_TAG: ${{ github.sha }}
-          ECR_URL: ${{ env.ECR_URL }}
         run: |
           docker build -t flask-app:${IMAGE_TAG} ./flask_app
           docker tag flask-app:${IMAGE_TAG} ${ECR_URL}:${IMAGE_TAG}
           docker push ${ECR_URL}:${IMAGE_TAG}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        run: |
+          aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
-      - name: Deploy to Kubernetes
+      - name: Deploy to EKS
         env:
-          ECR_URL: ${{ env.ECR_URL }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          kubectl set image deployment/flask-app flask=${ECR_URL}:${IMAGE_TAG} -n default || kubectl apply -f flask_app/k8s/
-          kubectl apply -f flask_app/k8s/ingress.yaml
+          kubectl get deployment flask-app || kubectl apply -f flask_app/k8s/
+          kubectl set image deployment/flask-app flask=${ECR_URL}:${IMAGE_TAG} -n default
+          kubectl apply -f flask_app/k8s/ingress.yaml || true
