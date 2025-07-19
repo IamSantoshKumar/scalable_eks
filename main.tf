@@ -23,7 +23,7 @@ module "vpc" {
   private_subnets  = ["10.0.3.0/24", "10.0.4.0/24"]
   enable_nat_gateway = true
   single_nat_gateway = true
-  tags = { Terraform = "true" Environment = "dev" }
+  tags = { Terraform = "true", Environment = "dev" }
 }
 
 module "eks" {
@@ -43,6 +43,6 @@ module "eks" {
       subnet_ids     = module.vpc.private_subnets
     }
   }
-  tags = { Terraform = "true", Environment = "dev_" }
+  tags = { Terraform = "true", Environment = "dev" }
 
 }
