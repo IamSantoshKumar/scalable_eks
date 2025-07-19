@@ -1,0 +1,13 @@
+# Terraform local directories
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Crash log
+crash.log
+
+# Sensitive files
+*.tfvars
+
+# Ignore lock file if you're regenerating it each time
+.terraform.lock.hcl
