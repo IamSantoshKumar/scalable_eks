@@ -1,4 +1,4 @@
-name: AWS Nuke (Sandbox)
+name: AWS Nuke (Full Cleanup)
 
 on:
   workflow_dispatch:
@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      AWS_ALIAS: sandbox-nuke  # customize your alias if needed
+      AWS_ALIAS: sandbox-nuke-${{ secrets.AWS_ACCOUNT_ID }}
 
     steps:
-    - name: Install aws-nuke (ekristen fork v3.56.2)
+    - name: Install aws-nuke
       run: |
         wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
         tar -xzf aws-nuke.tar.gz
@@ -25,30 +25,29 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
 
-    - name: Ensure account alias is set
+    - name: Ensure unique account alias exists
       run: |
-        EXISTING_ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text)
-        if [ "$EXISTING_ALIAS" = "None" ]; then
-          echo "No alias found. Creating alias: ${AWS_ALIAS}"
-          aws iam create-account-alias --account-alias ${AWS_ALIAS}
+        set -e
+        ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text)
+        if [ "$ALIAS" = "None" ] || [ -z "$ALIAS" ]; then
+          echo "Creating account alias: $AWS_ALIAS"
+          aws iam create-account-alias --account-alias "$AWS_ALIAS"
         else
-          echo "Alias already exists: $EXISTING_ALIAS"
+          echo "Alias already exists: $ALIAS"
         fi
 
-    - name: Generate nuke config
+    - name: Generate nuke config file
       run: |
-        cat > nuke-config.yaml <<EOF
-        regions:
-          - global
-          - eu-north-1
-        blocklist:
-          - "000000000000"
-        accounts:
-          "${AWS_ACCOUNT_ID}":
-            account-alias: ${AWS_ALIAS}
-        EOF
+        echo "regions:" > nuke-config.yaml
+        echo "  - global" >> nuke-config.yaml
+        echo "  - eu-north-1" >> nuke-config.yaml
+        echo "blocklist:" >> nuke-config.yaml
+        echo "  - \"000000000000\"" >> nuke-config.yaml
+        echo "accounts:" >> nuke-config.yaml
+        echo "  \"${AWS_ACCOUNT_ID}\":" >> nuke-config.yaml
+        echo "    filters: {}" >> nuke-config.yaml
 
-    - name: 🚀 Nuke all AWS resources
+    - name: Nuking all resources in account
       run: |
-        echo "=== Nuking all resources in account: ${AWS_ACCOUNT_ID} ==="
+        echo "Running aws-nuke on account: $AWS_ACCOUNT_ID"
         aws-nuke run -c nuke-config.yaml --no-dry-run --force
