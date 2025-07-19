@@ -1,4 +1,4 @@
-name: AWS Nuke (Full Account Wipe)
+name: AWS Nuke (Sandbox)
 
 on:
   workflow_dispatch:
@@ -8,9 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_ALIAS: sandbox-nuke  # customize your alias if needed
 
     steps:
-    - name: Install aws-nuke (v3.56.2)
+    - name: Install aws-nuke (ekristen fork v3.56.2)
       run: |
         wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
         tar -xzf aws-nuke.tar.gz
@@ -24,22 +25,30 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-north-1
 
-    - name: Generate aws-nuke config for full deletion
+    - name: Ensure account alias is set
+      run: |
+        EXISTING_ALIAS=$(aws iam list-account-aliases --query 'AccountAliases[0]' --output text)
+        if [ "$EXISTING_ALIAS" = "None" ]; then
+          echo "No alias found. Creating alias: ${AWS_ALIAS}"
+          aws iam create-account-alias --account-alias ${AWS_ALIAS}
+        else
+          echo "Alias already exists: $EXISTING_ALIAS"
+        fi
+
+    - name: Generate nuke config
       run: |
         cat > nuke-config.yaml <<EOF
         regions:
           - global
           - eu-north-1
-
         blocklist:
-          - "000000000000"  # Do not touch this
-
+          - "000000000000"
         accounts:
           "${AWS_ACCOUNT_ID}":
-            account-alias: "sandbox-nuke"
+            account-alias: ${AWS_ALIAS}
         EOF
 
-    - name: Run AWS Nuke (⚠️ Destroys ALL Resources)
+    - name: 🚀 Nuke all AWS resources
       run: |
         echo "=== Nuking all resources in account: ${AWS_ACCOUNT_ID} ==="
         aws-nuke run -c nuke-config.yaml --no-dry-run --force
