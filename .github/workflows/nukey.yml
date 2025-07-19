@@ -21,14 +21,13 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: eu-north-1
     - name: Generate nuke config
       run: |
         cat > nuke-config.yaml <<EOF
         regions:
           - global
-          - us-east-1
-          - us-west-2
+          - eu-north-1
         account-blocklist:
           - "000000000000"
         accounts:
