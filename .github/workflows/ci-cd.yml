@@ -27,11 +27,11 @@ jobs:
           terraform_version: 1.6.6
 
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init 
 
       - name: Terraform Apply (create infra)
         id: tf_apply
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve 
 
       - name: Capture ECR URL
         run: echo "ECR_URL=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
