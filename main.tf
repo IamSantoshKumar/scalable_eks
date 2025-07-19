@@ -41,5 +41,5 @@ module "eks" {
       subnet_ids     = module.vpc.private_subnets
     }
   }
-  tags = { Terraform = "true" Environment = "dev_" }
+  tags = { Terraform = "true" Environment = "dev" }
 }
