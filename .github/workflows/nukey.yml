@@ -1,16 +1,11 @@
-name: AWS Nuke (Auto VPC Cleanup)
+name: AWS Nuke (Sandbox)
 
 on:
   workflow_dispatch:
-    inputs:
-      confirm_deletion:
-        description: "Type YES to confirm VPC deletion"
-        required: true
 
 jobs:
-  nuke-vpc:
+  aws-nuke:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.confirm_deletion == 'YES' }}
     env:
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
@@ -20,7 +15,7 @@ jobs:
         wget https://github.com/ekristen/aws-nuke/releases/download/v3.56.2/aws-nuke-v3.56.2-linux-amd64.tar.gz -O aws-nuke.tar.gz
         tar -xzf aws-nuke.tar.gz
         chmod +x aws-nuke
-        sudo mv aws-nuke /usr/local/bin/aws-nuke
+        sudo mv aws-nuke /usr/local/bin/
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
@@ -35,11 +30,12 @@ jobs:
         regions:
           - eu-north-1
 
-        account-blocklist:
+        blocklist:
           - "000000000000"
 
         accounts:
           "${AWS_ACCOUNT_ID}":
+            account-alias: "sandbox-nuke"
             include:
               - VPC
               - Subnet
@@ -51,8 +47,26 @@ jobs:
               - VpcPeeringConnection
               - VpnGateway
               - CustomerGateway
+            filters:
+              VPC:
+                # Optional: Only delete VPCs tagged for auto-delete
+                - property: "tag:autodelete"
+                  value: "true"
         EOF
 
-    - name: Run aws-nuke (Real Deletion)
+    - name: 🧪 Dry Run (Preview Plan)
       run: |
+        echo "=== Dry-run output ==="
+        aws-nuke run -c nuke-config.yaml --no-dry-run=false | tee dry-run.txt
+
+    - name: Upload dry-run log for review
+      uses: actions/upload-artifact@v4
+      with:
+        name: dry-run-log
+        path: dry-run.txt
+
+    - name: ⚠️ Manual Step - Uncomment below to enable destruction
+      if: false  # Prevents this from running unless changed manually
+      run: |
+        echo "=== Starting actual destruction ==="
         aws-nuke run -c nuke-config.yaml --no-dry-run --force
