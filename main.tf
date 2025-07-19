@@ -34,7 +34,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.8.4"  # ✅ Compatible with AWS providers <6.0.0
+  version = "20.8.4"  # ✅ Compatible with AWS provider <6.0.0
 
   cluster_name    = "flask-scalable-cluster"
   cluster_version = var.k8s_version
