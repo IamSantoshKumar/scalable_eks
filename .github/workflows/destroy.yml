@@ -30,3 +30,7 @@ jobs:
 
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
+
+      - name: Clean Terraform local state
+        run: |
+          rm -rf .terraform terraform.tfstate* .terraform.lock.hcl
