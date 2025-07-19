@@ -16,7 +16,7 @@ provider "aws" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.1.2"  # ✅ Tested version that works with AWS providers <6.0.0
+  version = "5.1.2"  # ✅ Tested version that works with AWS provider <6.0.0
 
   name                 = "flask-scalable-vpc"
   cidr                 = "10.0.0.0/16"
