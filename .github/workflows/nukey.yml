@@ -1,0 +1,52 @@
+name: AWS Nuke (Sandbox Only)
+
+on:
+  workflow_dispatch:  # Only manually triggered
+
+jobs:
+  aws-nuke:
+    name: Nuke AWS Resources
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install aws-nuke
+      run: |
+        wget https://github.com/rebuy-de/aws-nuke/releases/latest/download/aws-nuke-linux-amd64 -O aws-nuke
+        chmod +x aws-nuke
+        sudo mv aws-nuke /usr/local/bin/
+
+    - name: Create Config File
+      run: |
+        echo "
+        regions:
+          - global
+          - us-east-1
+          - us-west-2
+
+        account-blocklist:
+          - '000000000000'  # Never touch prod or important accounts
+
+        accounts:
+          '${{ secrets.AWS_ACCOUNT_ID }}': {}
+        " > nuke-config.yaml
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Dry Run (Preview Deletion Plan)
+      run: |
+        echo "Dry run to preview resources to delete..."
+        aws-nuke -c nuke-config.yaml --no-dry-run=false | tee dry-run-output.txt
+
+    - name: Confirm or Cancel
+      run: |
+        echo "Review dry-run output above. If you're happy with the plan, re-run the workflow and uncomment the real nuke step below."
+        exit 0
+
+    # 🚨 TO RUN ACTUAL NUKE, UNCOMMENT BELOW:
+    # - name: Actual Destruction (Nuke Everything)
+    #   run: aws-nuke -c nuke-config.yaml --no-dry-run
